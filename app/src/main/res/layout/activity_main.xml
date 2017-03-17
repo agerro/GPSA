@@ -21,13 +21,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/seekBar2"
-        android:layout_below="@+id/toggleButton2"/>
+        android:layout_below="@+id/toggleButton2"
+        android:max="1000" />
+    <TextView
+        android:text="0"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/seekBar2"
+        android:layout_alignParentStart="true"
+        android:id="@+id/textView" />
 
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/seekBar2"
+        android:layout_below="@+id/textView"
         class="com.google.android.gms.maps.SupportMapFragment" />
+
+
 
 </RelativeLayout>

@@ -1,26 +1,58 @@
 package se.devner.gpsa;
 
+import android.Manifest;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.CountDownTimer;
+import android.provider.Settings;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.FloatMath;
+import android.util.Log;
+import android.view.View;
 import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import io.nlopez.smartlocation.OnLocationUpdatedListener;
+import io.nlopez.smartlocation.SmartLocation;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     GoogleMap map;
     MarkerOptions clickedMarker;
+    LatLng currentLocation;
+    CountDownTimer cdt;
     boolean alarmActive;
-    float selectedRange;
+    boolean GPSActivated;
+    boolean notifying;
+    double selectedRange;
     SeekBar sb;
+    ToggleButton tb;
+    TextView tv;
+    Circle circle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,14 +61,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        cdt = null;
         clickedMarker = null;
+        notifying = false;
+        circle = null;
+        currentLocation = null;
         alarmActive = false;
-        selectedRange = 0f;
+        selectedRange = 0;
+        GPSActivated = false;
+
+        SmartLocation.with(this).location()
+                .start(new OnLocationUpdatedListener() {
+                    @Override
+                    public void onLocationUpdated(Location location) {
+                        GPSActivated = true;
+                        currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                    }
+                });
+
+        tv = (TextView) findViewById(R.id.textView);
+        tb = (ToggleButton) findViewById(R.id.toggleButton2);
+        tb.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (tb.isChecked()) {
+                    if (GPSActivated) {
+                        if (clickedMarker != null) {
+                            Toast.makeText(MainActivity.this, "Alarm activated", Toast.LENGTH_SHORT).show();
+                            startCheck();
+                        } else {
+                            tb.setChecked(false);
+                            Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "Alarm deactivated", Toast.LENGTH_SHORT).show();
+                    stopCheck();
+                }
+            }
+        });
+
         sb = (SeekBar) findViewById(R.id.seekBar2);
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selectedRange = (float) progress;
+                selectedRange = (double) progress;
+                tv.setText(String.valueOf(progress) + " meters");
             }
 
             @Override
@@ -46,10 +116,57 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-
+                if (clickedMarker != null) {
+                    drawCircle(clickedMarker, selectedRange);
+                }
             }
         });
     }
+
+    private void startCheck() {
+        cdt = new CountDownTimer(30000000, 2000) {
+            public void onTick(long millisUntilFinished) {
+                if (currentLocation != null) {
+                    if (userWithinRange(clickedMarker, currentLocation)) {
+                        //Notify
+                        if(!notifying) {
+                            startNotification();
+                        }
+                    }
+                }
+            }
+
+            public void onFinish() {
+                stopCheck();
+            }
+        }.start();
+    }
+
+    private void startNotification() {
+        stopCheck();
+        notifying = true;
+        clickedMarker = null;
+        map.clear();
+        tb.setChecked(false);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Alarm")
+                .setMessage("Du är framme!")
+                .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        notifying = false;
+                    }
+                })
+
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    private void stopCheck() {
+        cdt.cancel();
+        cdt = null;
+    }
+
     @Override
     public void onMapReady(GoogleMap m) {
         map = m;
@@ -77,14 +194,38 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 map.animateCamera(CameraUpdateFactory.newLatLng(latLng));
 
                 // Placing a marker on the touched position
-                map.addMarker(markerOptions);
                 clickedMarker = markerOptions;
+                drawCircle(clickedMarker, selectedRange);
+                map.addMarker(markerOptions);
             }
         });
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        map.setMyLocationEnabled(true);
     }
 
-    public boolean userWithinRange(MarkerOptions m1, MarkerOptions m2){
-        if(meterDistanceBetweenPoints((float)m1.getPosition().latitude, (float)m1.getPosition().longitude, (float)m2.getPosition().latitude, (float)m2.getPosition().longitude) < selectedRange){
+    private void drawCircle(MarkerOptions clickedMarker, double selectedRange) {
+
+        if(circle != null){
+            circle.remove();
+        }
+        circle = map.addCircle(new CircleOptions()
+            .center(new LatLng(clickedMarker.getPosition().latitude, clickedMarker.getPosition().longitude))
+            .radius(selectedRange/2)
+            .strokeColor(Color.argb(100,0,0,0))
+            .fillColor(Color.argb(100, 100, 150, 200)));
+    }
+
+    public boolean userWithinRange(MarkerOptions sel, LatLng cur){
+        if(meterDistanceBetweenPoints((float)sel.getPosition().latitude, (float)sel.getPosition().longitude, (float)cur.latitude, (float)cur.longitude) < selectedRange){
             return true;
         }else{
             return false;
@@ -92,18 +233,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
-        float pk = (float) (180.f/Math.PI);
+        double earthRadius = 3958.75;
+        double latDiff = Math.toRadians(lat_b-lat_a);
+        double lngDiff = Math.toRadians(lng_b-lng_a);
+        double a = Math.sin(latDiff /2) * Math.sin(latDiff /2) +
+                Math.cos(Math.toRadians(lat_a)) * Math.cos(Math.toRadians(lat_b)) *
+                        Math.sin(lngDiff /2) * Math.sin(lngDiff /2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        double distance = earthRadius * c;
 
-        float a1 = lat_a / pk;
-        float a2 = lng_a / pk;
-        float b1 = lat_b / pk;
-        float b2 = lng_b / pk;
+        int meterConversion = 1609;
 
-        float t1 = (float)(Math.cos(a1)*Math.cos(a2)*Math.cos(b1)*Math.cos(b2));
-        float t2 = (float)(Math.cos(a1)*Math.sin(a2)*Math.cos(b1)*Math.sin(b2));
-        float t3 = (float)(Math.sin(a1)*Math.sin(b1));
-        double tt = Math.acos(t1 + t2 + t3);
+        Float f = new Float(distance * meterConversion).floatValue();
 
-        return 6366000*tt;
+        Log.d("Meters between:", String.valueOf(f));
+        Log.d("SelectedRange:", String.valueOf(selectedRange));
+
+        return f;
+
     }
 }
