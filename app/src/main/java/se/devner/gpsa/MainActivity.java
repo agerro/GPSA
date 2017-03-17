@@ -1,32 +1,24 @@
 package se.devner.gpsa;
 
 import android.Manifest;
-import android.app.AlertDialog;
-import android.app.Dialog;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.CountDownTimer;
-import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -35,28 +27,31 @@ import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-
 import io.nlopez.smartlocation.OnLocationUpdatedListener;
 import io.nlopez.smartlocation.SmartLocation;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    GoogleMap map;
-    MarkerOptions clickedMarker;
-    LatLng currentLocation;
+    static GoogleMap map;
+    static MarkerOptions clickedMarker;
+    static LatLng currentLocation;
     CountDownTimer cdt;
     boolean alarmActive;
     boolean GPSActivated;
-    boolean notifying;
-    double selectedRange;
+    static boolean notifying;
+    static double selectedRange;
     SeekBar sb;
-    ToggleButton tb;
+    static ToggleButton tb;
     TextView tv;
     Circle circle;
+    static NotificationCompat.Builder mBuilder;
+    JobInfo.Builder builder;
+    static JobScheduler mJobScheduler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mBuilder = new NotificationCompat.Builder(this);
         setContentView(R.layout.activity_main);
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -69,6 +64,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         alarmActive = false;
         selectedRange = 0;
         GPSActivated = false;
+
+        mJobScheduler = (JobScheduler)
+                getSystemService( Context.JOB_SCHEDULER_SERVICE );
 
         SmartLocation.with(this).location()
                 .start(new OnLocationUpdatedListener() {
@@ -84,20 +82,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         tb.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (tb.isChecked()) {
-                    if (GPSActivated) {
-                        if (clickedMarker != null) {
-                            Toast.makeText(MainActivity.this, "Alarm activated", Toast.LENGTH_SHORT).show();
-                            startCheck();
-                        } else {
-                            tb.setChecked(false);
-                            Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
-                        }
+            if (tb.isChecked()) {
+                if (GPSActivated) {
+                    if (clickedMarker != null) {
+                        //Toast.makeText(MainActivity.this, "Alarm activated", Toast.LENGTH_SHORT).show();
+                        startCheck();
+                    } else {
+                        tb.setChecked(false);
+                        Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
                     }
-                } else {
-                    Toast.makeText(MainActivity.this, "Alarm deactivated", Toast.LENGTH_SHORT).show();
-                    stopCheck();
                 }
+            } else {
+                //Toast.makeText(MainActivity.this, "Alarm deactivated", Toast.LENGTH_SHORT).show();
+                stopCheck();
+            }
             }
         });
 
@@ -123,11 +121,54 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
+    public void startCheck(){
+        //Toast.makeText(this, "Stqrt", Toast.LENGTH_SHORT).show();
+        builder = new JobInfo.Builder( 1,
+                new ComponentName( getPackageName(),
+                        JobSchedulerService.class.getName() ) );
+        builder.setPeriodic(2000);
+
+        if( mJobScheduler.schedule( builder.build() ) <= 0 ) {
+            //If something goes wrong
+            Toast.makeText(this, "WRONG", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public static void noti(){
+        /*new AlertDialog.Builder(this)
+                .setTitle("Alarm")
+                .setMessage("Du är framme!")
+                .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        notifying = false;
+                    }
+                })
+
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+                */
+
+        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
+        mBuilder.setContentTitle("Notification Alert, Click Me!");
+        mBuilder.setContentText("Hi, This is Android Notification Detail!");
+    }
+
+    public static void stopCheck(){
+        notifying = true;
+        clickedMarker = null;
+        map.clear();
+        tb.setChecked(false);
+        mJobScheduler.cancelAll();
+        noti();
+
+    }
+
+/*
     private void startCheck() {
         cdt = new CountDownTimer(30000000, 2000) {
             public void onTick(long millisUntilFinished) {
                 if (currentLocation != null) {
-                    if (userWithinRange(clickedMarker, currentLocation)) {
+                    if (userWithinRange()) {
                         //Notify
                         if(!notifying) {
                             startNotification();
@@ -142,30 +183,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }.start();
     }
 
-    private void startNotification() {
+    private void stopCheck() {
+        cdt.cancel();
+        cdt = null;
+    }
+    *//*
+public static void startNotification() {
         stopCheck();
         notifying = true;
         clickedMarker = null;
         map.clear();
         tb.setChecked(false);
 
+
         new AlertDialog.Builder(this)
-                .setTitle("Alarm")
-                .setMessage("Du är framme!")
-                .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        notifying = false;
-                    }
-                })
+            .setTitle("Alarm")
+            .setMessage("Du är framme!")
+            .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int which) {
+                    notifying = false;
+                }
+            })
 
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .show();
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .show();
     }
-
-    private void stopCheck() {
-        cdt.cancel();
-        cdt = null;
-    }
+    */
 
     @Override
     public void onMapReady(GoogleMap m) {
@@ -176,37 +219,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onMapClick(LatLng latLng) {
-
-                // Creating a marker
                 MarkerOptions markerOptions = new MarkerOptions();
-
-                // Setting the position for the marker
                 markerOptions.position(latLng);
-
-                // Setting the title for the marker.
-                // This will be displayed on taping the marker
                 markerOptions.title(latLng.latitude + " : " + latLng.longitude);
-
-                // Clears the previously touched position
                 map.clear();
-
-                // Animating to the touched position
                 map.animateCamera(CameraUpdateFactory.newLatLng(latLng));
-
-                // Placing a marker on the touched position
                 clickedMarker = markerOptions;
                 drawCircle(clickedMarker, selectedRange);
                 map.addMarker(markerOptions);
             }
         });
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return;
         }
         map.setMyLocationEnabled(true);
@@ -224,15 +248,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             .fillColor(Color.argb(100, 100, 150, 200)));
     }
 
-    public boolean userWithinRange(MarkerOptions sel, LatLng cur){
-        if(meterDistanceBetweenPoints((float)sel.getPosition().latitude, (float)sel.getPosition().longitude, (float)cur.latitude, (float)cur.longitude) < selectedRange){
+    public static boolean userWithinRange(){
+        if(meterDistanceBetweenPoints((float)clickedMarker.getPosition().latitude, (float)clickedMarker.getPosition().longitude, (float)currentLocation.latitude, (float)currentLocation.longitude) < selectedRange){
             return true;
         }else{
             return false;
         }
     }
 
-    private double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
+    private static double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
         double earthRadius = 3958.75;
         double latDiff = Math.toRadians(lat_b-lat_a);
         double lngDiff = Math.toRadians(lng_b-lng_a);
