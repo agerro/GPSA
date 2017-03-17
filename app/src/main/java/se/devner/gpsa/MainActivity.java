@@ -1,7 +1,10 @@
 package se.devner.gpsa;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -9,6 +12,9 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
@@ -30,7 +36,10 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener {
+import io.nlopez.smartlocation.OnLocationUpdatedListener;
+import io.nlopez.smartlocation.SmartLocation;
+
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     GoogleMap map;
     MarkerOptions clickedMarker;
@@ -38,12 +47,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     CountDownTimer cdt;
     boolean alarmActive;
     boolean GPSActivated;
+    boolean notifying;
     double selectedRange;
     SeekBar sb;
     ToggleButton tb;
     TextView tv;
     Circle circle;
-    LocationManager service;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +62,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         cdt = null;
+        clickedMarker = null;
+        notifying = false;
+        circle = null;
+        currentLocation = null;
+        alarmActive = false;
+        selectedRange = 0;
         GPSActivated = false;
+
+        SmartLocation.with(this).location()
+                .start(new OnLocationUpdatedListener() {
+                    @Override
+                    public void onLocationUpdated(Location location) {
+                        GPSActivated = true;
+                        currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                    }
+                });
 
         tv = (TextView) findViewById(R.id.textView);
         tb = (ToggleButton) findViewById(R.id.toggleButton2);
@@ -69,8 +93,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             tb.setChecked(false);
                             Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
                         }
-                    } else {
-                        checkGPS();
                     }
                 } else {
                     Toast.makeText(MainActivity.this, "Alarm deactivated", Toast.LENGTH_SHORT).show();
@@ -78,11 +100,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
-        clickedMarker = null;
-        circle = null;
-        currentLocation = null;
-        alarmActive = false;
-        selectedRange = 0;
+
         sb = (SeekBar) findViewById(R.id.seekBar2);
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -103,69 +121,49 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
-
-        checkGPS();
-    }
-
-    public void checkGPS() {
-        String provider;
-
-        service = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        // Define the criteria how to select the locatioin provider -> use
-        // default
-        Criteria criteria = new Criteria();
-        provider = service.getBestProvider(criteria, false);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        Location location = service.getLastKnownLocation(provider);
-
-        // Initialize the location fields
-        if (location != null) {
-            onLocationChanged(location);
-            GPSActivated = true;
-        } else {
-            GPSActivated = false;
-        }
-
-        service = (LocationManager) getSystemService(LOCATION_SERVICE);
-        boolean enabled = service
-                .isProviderEnabled(LocationManager.GPS_PROVIDER);
-        if (!enabled) {
-            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-            startActivity(intent);
-        }else{
-        }
     }
 
     private void startCheck() {
-        new CountDownTimer(30000000, 2000) {
-
+        cdt = new CountDownTimer(30000000, 2000) {
             public void onTick(long millisUntilFinished) {
-                //currentLocation = new LatLng(service.getLastKnownLocation().getLatitude(), gpsTracker.getLongitude());
-                Log.d("currLoc:", currentLocation.latitude + " " + currentLocation.longitude);
-                if(currentLocation != null) {
-                    Toast.makeText(MainActivity.this, "LocationNotNull", Toast.LENGTH_SHORT).show();
+                if (currentLocation != null) {
                     if (userWithinRange(clickedMarker, currentLocation)) {
                         //Notify
-                        Toast.makeText(MainActivity.this, "WITHIN RANGE", Toast.LENGTH_SHORT).show();
+                        if(!notifying) {
+                            startNotification();
+                        }
                     }
                 }
             }
+
             public void onFinish() {
                 stopCheck();
             }
         }.start();
     }
 
+    private void startNotification() {
+        stopCheck();
+        notifying = true;
+        clickedMarker = null;
+        map.clear();
+        tb.setChecked(false);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Alarm")
+                .setMessage("Du är framme!")
+                .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        notifying = false;
+                    }
+                })
+
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
     private void stopCheck() {
+        cdt.cancel();
         cdt = null;
     }
 
@@ -201,6 +199,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 map.addMarker(markerOptions);
             }
         });
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        map.setMyLocationEnabled(true);
     }
 
     private void drawCircle(MarkerOptions clickedMarker, double selectedRange) {
@@ -216,8 +225,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public boolean userWithinRange(MarkerOptions sel, LatLng cur){
-        Log.d("SelectedLocation:", String.valueOf(sel.getPosition().latitude) + String.valueOf(sel.getPosition().longitude));
-        Log.d("CurrentLocation:", String.valueOf(cur.latitude) + String.valueOf(cur.longitude));
         if(meterDistanceBetweenPoints((float)sel.getPosition().latitude, (float)sel.getPosition().longitude, (float)cur.latitude, (float)cur.longitude) < selectedRange){
             return true;
         }else{
@@ -226,40 +233,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
-        float pk = (float) (180.f/Math.PI);
+        double earthRadius = 3958.75;
+        double latDiff = Math.toRadians(lat_b-lat_a);
+        double lngDiff = Math.toRadians(lng_b-lng_a);
+        double a = Math.sin(latDiff /2) * Math.sin(latDiff /2) +
+                Math.cos(Math.toRadians(lat_a)) * Math.cos(Math.toRadians(lat_b)) *
+                        Math.sin(lngDiff /2) * Math.sin(lngDiff /2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        double distance = earthRadius * c;
 
-        float a1 = lat_a / pk;
-        float a2 = lng_a / pk;
-        float b1 = lat_b / pk;
-        float b2 = lng_b / pk;
+        int meterConversion = 1609;
 
-        float t1 = (float)(Math.cos(a1)*Math.cos(a2)*Math.cos(b1)*Math.cos(b2));
-        float t2 = (float)(Math.cos(a1)*Math.sin(a2)*Math.cos(b1)*Math.sin(b2));
-        float t3 = (float)(Math.sin(a1)*Math.sin(b1));
-        double tt = Math.acos(t1 + t2 + t3);
+        Float f = new Float(distance * meterConversion).floatValue();
 
+        Log.d("Meters between:", String.valueOf(f));
         Log.d("SelectedRange:", String.valueOf(selectedRange));
-        Log.d("Meters between:", String.valueOf(6366000*tt));
-        return 6366000*tt;
-    }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
+        return f;
 
     }
 }
