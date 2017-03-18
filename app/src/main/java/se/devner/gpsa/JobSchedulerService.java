@@ -1,20 +1,15 @@
 package se.devner.gpsa;
 
-import android.app.AlertDialog;
 import android.app.job.JobParameters;
 import android.app.job.JobService;
-import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
-import static se.devner.gpsa.MainActivity.clickedMarker;
-import static se.devner.gpsa.MainActivity.map;
 import static se.devner.gpsa.MainActivity.notifying;
 import static se.devner.gpsa.MainActivity.stopCheck;
-import static se.devner.gpsa.MainActivity.tb;
 
 /**
  * Created by paulruiz on 3/7/15.
