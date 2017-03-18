@@ -1,14 +1,25 @@
 package se.devner.gpsa;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.location.Location;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
@@ -18,6 +29,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+
+import com.evernote.android.job.JobManager;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -32,25 +45,33 @@ import io.nlopez.smartlocation.SmartLocation;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    static GoogleMap map;
-    static MarkerOptions clickedMarker;
-    static LatLng currentLocation;
+    GoogleMap map;
+    MarkerOptions clickedMarker;
+    LatLng currentLocation;
     boolean alarmActive;
     boolean GPSActivated;
-    static boolean alarm;
-    static boolean notifying;
-    static double selectedRange;
+    boolean alarm;
+    boolean notifying;
+    double selectedRange;
     DiscreteSeekBar dsb;
-    static ToggleButton tb;
+    ToggleButton tb;
+    Ringtone r;
     Circle circle;
-    static NotificationCompat.Builder mBuilder;
-    //JobInfo.Builder builder;
-    static JobScheduler mJobScheduler;
+    CountDownTimer cdt;
+    NotificationCompat.Builder mBuilder;
+    JobScheduler mJobScheduler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //mBuilder = new NotificationCompat.Builder(this);
+
+        if(getIntent().getExtras()!=null){
+
+            if(r != null) {
+                r.stop();
+            }
+        }
+        mBuilder = new NotificationCompat.Builder(this);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
         getSupportActionBar().setIcon(R.drawable.logosmall);
         getSupportActionBar().setTitle("");
@@ -58,7 +79,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        //cdt = null;
+        cdt = null;
         clickedMarker = null;
         notifying = false;
         circle = null;
@@ -66,18 +87,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         alarmActive = false;
         selectedRange = 0;
         GPSActivated = false;
-/*
+        alarm = true;
+
         mJobScheduler = (JobScheduler)
                 getSystemService( Context.JOB_SCHEDULER_SERVICE );
-*/
+
         SmartLocation.with(this).location()
-                .start(new OnLocationUpdatedListener() {
-                    @Override
-                    public void onLocationUpdated(Location location) {
-                        GPSActivated = true;
-                        currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
-                    }
-                });
+            .start(new OnLocationUpdatedListener() {
+                @Override
+                public void onLocationUpdated(Location location) {
+                    GPSActivated = true;
+                    currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                }
+            });
 
         //tv = (TextView) findViewById(R.id.textView);
         tb = (ToggleButton) findViewById(R.id.toggleButton2);
@@ -143,56 +165,74 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
         */
     }
-
+/*
     public void startCheck(){
 
-       /*
-        //Toast.makeText(this, "Stqrt", Toast.LENGTH_SHORT).show();
-        builder = new JobInfo.Builder( 1,
+        //JobManager.create(this).addJobCreator(new DemoJobCreator());
+        Toast.makeText(this, "Stqrt", Toast.LENGTH_SHORT).show();
+        /*builder = new JobInfo.Builder( 1,
                 new ComponentName( getPackageName(),
                         JobSchedulerService.class.getName() ) );
         builder.setPeriodic(2000);
-        int status = mJobScheduler.schedule(builder.build());
 
+        mJobScheduler.schedule(builder.build());
+*//*
         if( status <= 0 ) {
             //If something goes wrong
             Toast.makeText(this, "WRONG", Toast.LENGTH_SHORT).show();
-        }*/
+        }
+        */
+    //}
+
+    public void noti(){
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        Bundle bundle = new Bundle();
+        bundle.putString("buzz", "buzz");
+        notificationIntent.putExtras(bundle);
+
+        PendingIntent contentIntent = PendingIntent.getActivity(this,
+                1, notificationIntent,
+                PendingIntent.FLAG_CANCEL_CURRENT);
+
+        NotificationManager nm = (NotificationManager) this
+                .getSystemService(Context.NOTIFICATION_SERVICE);
+
+        Resources res = this.getResources();
+        Notification.Builder builder = new Notification.Builder(this);
+
+        builder.setContentIntent(contentIntent)
+                .setSmallIcon(R.drawable.ic_stat_name)
+                .setWhen(System.currentTimeMillis())
+                .setAutoCancel(true)
+                .setContentTitle("You have arrived")
+                .setContentText("Click to turn off alarm");
+        Notification n = builder.build();
+
+        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+        r.play();
+
+        nm.notify(1, n);
+        notifying = false;
+
     }
 
-    public static void noti(){
-        /*new AlertDialog.Builder(this)
-                .setTitle("Alarm")
-                .setMessage("Du är framme!")
-                .setPositiveButton("Stäng alarm", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        notifying = false;
-                    }
-                })
-
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .show();
-                */
-
-        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
-        mBuilder.setContentTitle("Notification Alert, Click Me!");
-        mBuilder.setContentText("Hi, This is Android Notification Detail!");
-        mBuilder.build();
-
-    }
-
-    public static void stopCheck(){
+    public void stopCheck(){
         notifying = true;
+        cdt.cancel();
+        cdt = null;
         clickedMarker = null;
         map.clear();
         tb.setChecked(false);
-        //mJobScheduler.cancelAll();
+
         if(alarm) {
             noti();
         }
     }
 
-/*
+
     private void startCheck() {
         cdt = new CountDownTimer(30000000, 2000) {
             public void onTick(long millisUntilFinished) {
@@ -200,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (userWithinRange()) {
                         //Notify
                         if(!notifying) {
-                            startNotification();
+                            stopCheck();
                         }
                     }
                 }
@@ -211,7 +251,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }.start();
     }
-
+/*
     private void stopCheck() {
         cdt.cancel();
         cdt = null;
@@ -284,6 +324,9 @@ public static void startNotification() {
         }
         Toast.makeText(MainActivity.this, "MapReady", Toast.LENGTH_SHORT).show();
         map.setMyLocationEnabled(true);
+        if(currentLocation != null){
+            map.moveCamera( CameraUpdateFactory.newLatLngZoom(currentLocation , 14.0f) );
+        }
     }
 
     private void drawCircle(MarkerOptions clickedMarker, double selectedRange) {
@@ -298,7 +341,7 @@ public static void startNotification() {
             .fillColor(Color.argb(100, 100, 150, 200)));
     }
 
-    public static boolean userWithinRange(){
+    public boolean userWithinRange(){
         if(meterDistanceBetweenPoints((float)clickedMarker.getPosition().latitude, (float)clickedMarker.getPosition().longitude, (float)currentLocation.latitude, (float)currentLocation.longitude) < selectedRange){
             return true;
         }else{
@@ -306,7 +349,7 @@ public static void startNotification() {
         }
     }
 
-    private static double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
+    private double meterDistanceBetweenPoints(float lat_a, float lng_a, float lat_b, float lng_b) {
         double earthRadius = 3958.75;
         double latDiff = Math.toRadians(lat_b-lat_a);
         double lngDiff = Math.toRadians(lng_b-lng_a);
