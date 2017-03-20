@@ -21,12 +21,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.provider.Settings;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -52,7 +54,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean GPSActivated;
     boolean alarm;
     boolean notifying;
-    double selectedRange;
+    double selectedRange, maxRange;
+    Button increase, decrease;
     DiscreteSeekBar dsb;
     ToggleButton tb;
     Ringtone r;
@@ -64,18 +67,67 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
         if(getIntent().getExtras()!=null){
-
             if(r != null) {
                 r.stop();
             }
         }
+
+        dsb = (DiscreteSeekBar)  findViewById(R.id.dsb);
+        dsb.setOnProgressChangeListener(new DiscreteSeekBar.OnProgressChangeListener() {
+            @Override
+            public void onProgressChanged(DiscreteSeekBar seekBar, int value, boolean fromUser) {
+                selectedRange = (double) value;
+            }
+
+            @Override
+            public void onStartTrackingTouch(DiscreteSeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(DiscreteSeekBar seekBar) {
+                if (clickedMarker != null) {
+                    drawCircle(clickedMarker, selectedRange);
+                }
+            }
+        });
+
+        maxRange = 1000;
+        dsb.setMax((int)maxRange);
+
+        decrease = (Button) findViewById(R.id.decrease);
+        decrease.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(maxRange <= 1000){
+                    maxRange = 1000;
+                    showSnackbar(2, maxRange);
+                }else{
+                    maxRange -= 1000;
+                    showSnackbar(1, maxRange);
+                }
+                dsb.setMax((int)maxRange);
+            }
+        });
+
+        increase = (Button) findViewById(R.id.increase);
+        increase.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                maxRange += 1000;
+                showSnackbar(1, maxRange);
+                dsb.setMax((int)maxRange);
+            }
+        });
+
         mBuilder = new NotificationCompat.Builder(this);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
         getSupportActionBar().setIcon(R.drawable.logosmall);
         getSupportActionBar().setTitle("");
-        setContentView(R.layout.activity_main);
+
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -113,7 +165,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         startCheck();
                     } else {
                         tb.setChecked(false);
-                        Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
+                        showSnackbar(3, selectedRange);
+                        //Toast.makeText(MainActivity.this, "Please choose a place for your alarm", Toast.LENGTH_SHORT).show();
                     }
                 }
             } else {
@@ -123,25 +176,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        dsb = (DiscreteSeekBar)  findViewById(R.id.dsb);
-        dsb.setOnProgressChangeListener(new DiscreteSeekBar.OnProgressChangeListener() {
-            @Override
-            public void onProgressChanged(DiscreteSeekBar seekBar, int value, boolean fromUser) {
-                selectedRange = (double) value;
-            }
 
-            @Override
-            public void onStartTrackingTouch(DiscreteSeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(DiscreteSeekBar seekBar) {
-                if (clickedMarker != null) {
-                    drawCircle(clickedMarker, selectedRange);
-                }
-            }
-        });
 /*
         sb = (SeekBar) findViewById(R.id.seekBar2);
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -183,6 +218,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         */
     //}
+
+    public void showSnackbar(int id, double range){
+        switch (id) {
+            case 1:
+                Snackbar.make(findViewById(android.R.id.content), "Maximum range set to " + range + " meters", Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 2:
+                Snackbar.make(findViewById(android.R.id.content), "Minimum max range is " + range + " meters", Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 3:
+                Snackbar.make(findViewById(android.R.id.content), "Please choose a place for your alarm", Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+        }
+    }
 
     public void noti(){
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -322,7 +374,7 @@ public static void startNotification() {
 
             return;
         }
-        Toast.makeText(MainActivity.this, "MapReady", Toast.LENGTH_SHORT).show();
+        //Toast.makeText(MainActivity.this, "MapReady", Toast.LENGTH_SHORT).show();
         map.setMyLocationEnabled(true);
         if(currentLocation != null){
             map.moveCamera( CameraUpdateFactory.newLatLngZoom(currentLocation , 14.0f) );

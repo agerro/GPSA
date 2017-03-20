@@ -8,14 +8,29 @@
     tools:context="se.devner.gpsa.MainActivity"
     android:orientation="vertical">
 
+    <View
+        android:layout_width="fill_parent"
+        android:background="@drawable/shadow_below"
+        android:layout_height="5dp"
+        android:layout_alignParentStart="false"
+        android:layout_alignParentTop="true" />
+
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/bar"
-        android:layout_alignParentTop="true"
         class="com.google.android.gms.maps.SupportMapFragment"
-        android:layout_gravity="top" />
+        android:layout_gravity="top"
+        android:layout_alignParentStart="false"
+        android:layout_alignWithParentIfMissing="false"
+        android:layout_alignParentTop="true" />
+
+    <View
+        android:layout_width="fill_parent"
+        android:background="@drawable/shadow_above"
+        android:layout_above="@+id/bar"
+        android:layout_height="5dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,12 +40,12 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true">
-
+<!--
         <View
             android:layout_width="fill_parent"
-            android:layout_height="10dp"
-            android:background="@drawable/bar_gradient" />
-
+            android:background="@drawable/shadow_below"
+            android:layout_height="5dp" />
+-->
         <org.adw.library.widgets.discreteseekbar.DiscreteSeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,30 +55,54 @@
             app:dsb_progressColor="@color/colorAccent"
             app:dsb_indicatorColor="@color/colorAccent"
             app:dsb_trackColor="@color/colorPrimary"
-            app:dsb_trackHeight="1dp"
-            android:layout_marginTop="-10dp"/>
+            app:dsb_trackHeight="1dp" />
 
-        <ToggleButton
-            android:text="ToggleButton"
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+        <LinearLayout
+            android:id="@+id/l1"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:id="@+id/toggleButton2" />
-<!--
-        <SeekBar
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <Button
+                android:text="@string/decrease"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/decrease" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/l2"
             android:layout_width="match_parent"
-            android:layout_height="20dp"
-            android:id="@+id/seekBar2"
-            android:layout_below="@+id/toggleButton2"
-            android:max="1000" />
--->
-        <!--
-        <TextView
-            android:text="0"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <ToggleButton
+                android:text="@string/togglebutton"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:id="@+id/toggleButton2"
+                android:textOff="@string/alarm_off"
+                android:textOn="@string/alarm_on" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/l3"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/seekBar2"
-            android:layout_alignParentStart="true"
-            android:id="@+id/textView" />
--->
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <Button
+                android:text="@string/increase"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/increase" />
+        </LinearLayout>
+    </LinearLayout>
     </LinearLayout>
 </RelativeLayout>
