@@ -8,13 +8,6 @@
     tools:context="se.devner.gpsa.MainActivity"
     android:orientation="vertical">
 
-    <View
-        android:layout_width="fill_parent"
-        android:background="@drawable/shadow_below"
-        android:layout_height="5dp"
-        android:layout_alignParentStart="false"
-        android:layout_alignParentTop="true" />
-
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/map"
         android:layout_width="match_parent"
@@ -25,6 +18,15 @@
         android:layout_alignParentStart="false"
         android:layout_alignWithParentIfMissing="false"
         android:layout_alignParentTop="true" />
+
+    <android.support.design.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_alignParentBottom="false"
+        android:layout_above="@+id/bar"
+        android:id="@+id/cLayout">
+
+    </android.support.design.widget.CoordinatorLayout>
 
     <View
         android:layout_width="fill_parent"

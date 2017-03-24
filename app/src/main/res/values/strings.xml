@@ -5,4 +5,6 @@
     <string name="decrease">DECREASE</string>
     <string name="increase">INCREASE</string>
     <string name="togglebutton">ToggleButton</string>
+    <string name="stop_alarm">Stop alarm</string>
+    <string name="alarmText">You have arrived at your location!</string>
 </resources>
