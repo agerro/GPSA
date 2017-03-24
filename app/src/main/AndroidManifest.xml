@@ -14,22 +14,24 @@
         <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
         <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
         <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-        <service android:name=".JobSchedulerService"
-            android:permission="android.permission.BIND_JOB_SERVICE"
-            android:exported="true"/>
+
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyB83nFQGVLDf0SyNyo8A3KwGu9zRG_5RiY"/>
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+            android:configChanges="orientation"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".AlarmReceiverActivity"></activity>
+        <service android:name=".LocationCheckerService" />
     </application>
 
 </manifest>
