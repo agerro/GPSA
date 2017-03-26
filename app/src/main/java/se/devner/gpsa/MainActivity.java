@@ -17,8 +17,14 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.RelativeLayout;
 import android.widget.ToggleButton;
+
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -44,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     ToggleButton tb;
     Circle circle;
     NotificationManager nm;
+    private AdView mAdView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //Init logo instead off text in toolbar
         getSupportActionBar().setDisplayShowHomeEnabled(true);
-        getSupportActionBar().setIcon(R.drawable.logosmall);
+        getSupportActionBar().setIcon(R.drawable.logobar);
         getSupportActionBar().setTitle("");
 
         //Init map
@@ -132,7 +139,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         startLocationService();
                     } else {
                         tb.setChecked(false);
-                        showSnackbar(3, selectedRange);
+                        showSnackbar(3, 0);
                     }
                 } else {
                     //stopCheck();
@@ -147,27 +154,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     //End of onCreate
-/*
-    public void stopCheck(){
-        notifying = true;
-        alarmActive = false;
-        clickedMarker = null;
-        map.clear();
-        tb.setChecked(false);
-        toggleNotification(false);
-        stopLocationService();
 
-        if(alarm) {
-            alarm = false;
-        }
-    }
-
-    private void startCheck() {
-        alarmActive = true;
-        startLocationService();
-        toggleNotification(true);
-    }
-*/
     //Finished methods
     @Override
     public void onMapReady(GoogleMap m) {
@@ -236,6 +223,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .setContentTitle("Alarm is on");
             //.setContentText("Click to turn off alarm");
             Notification n = builder.build();
+            n.flags |= Notification.FLAG_NO_CLEAR;
 
             nm.notify(1, n);
         }else{
@@ -267,7 +255,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         circle = map.addCircle(new CircleOptions()
             .center(new LatLng(clickedMarker.getPosition().latitude, clickedMarker.getPosition().longitude))
-            .radius(selectedRange/2)
+            .radius(selectedRange)
             .strokeColor(Color.argb(100,0,0,0))
             .fillColor(Color.argb(100, 100, 150, 200)));
     }
