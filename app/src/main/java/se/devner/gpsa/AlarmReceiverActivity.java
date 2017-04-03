@@ -29,7 +29,7 @@ public class AlarmReceiverActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setContentView(R.layout.alarm);
+        setContentView(R.layout.alarm_layout);
 
         mAdView = (AdView) findViewById(R.id.adView);
         AdRequest adRequest = new AdRequest.Builder().build();
@@ -65,11 +65,11 @@ public class AlarmReceiverActivity extends Activity {
                 mMediaPlayer.start();
             }
         } catch (IOException e) {
-            System.out.println("OOPS");
+
         }
     }
 
-    //Get an alarm sound. Try for an alarm. If none set, try notification,
+    //Get an alarm_layout sound. Try for an alarm_layout. If none set, try notification,
     //Otherwise, ringtone.
     private Uri getAlarmUri() {
         Uri alert = RingtoneManager

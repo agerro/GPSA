@@ -1,30 +1,36 @@
 package se.devner.gpsa;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.RelativeLayout;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.ToggleButton;
 
-import com.google.android.gms.ads.AdListener;
-import com.google.android.gms.ads.AdRequest;
-import com.google.android.gms.ads.AdView;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -33,6 +39,7 @@ import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+
 import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -49,13 +56,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     DiscreteSeekBar dsb;
     ToggleButton tb;
     Circle circle;
+    ImageView star;
     NotificationManager nm;
-    private AdView mAdView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //DEBUG METHODS
+        clearFavorites();
 
         //Init variables
         clickedMarker = null;
@@ -65,6 +75,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         selectedRange = 0;
         GPSActivated = false;
         alarm = false;
+
+        //Init Starbutton
+        star = (ImageView) findViewById(R.id.star);
+        star.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (clickedMarker == null) {
+                    showSnackbar(5, 0);
+                } else {
+                    showAddFavoriteDialog();
+                }
+            }
+        });
 
         //Init slider
         dsb = (DiscreteSeekBar) findViewById(R.id.dsb);
@@ -135,25 +158,207 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onClick(View v) {
                 if (tb.isChecked()) {
                     if (clickedMarker != null) {
-                        //startCheck();
                         startLocationService();
                     } else {
                         tb.setChecked(false);
                         showSnackbar(3, 0);
                     }
                 } else {
-                    //stopCheck();
-                    resetApp();
                     stopLocationService();
                 }
             }
         });
+        tb.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                showFavoriteList();
+                return false;
+            }
+        });
     }
 
-    private void resetApp() {
+    private void showFavoriteList() {
+        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+        String temp = settings.getString("favorites", null);
+        final String[] stringList = temp.split(";");
+        final int[] selected = {0};
+        // custom dialog
+        final AlertDialog ad = new AlertDialog.Builder(this)
+                .setTitle(R.string.favorite_list_dialog_title)
+                .setView(R.layout.select_favorite_layout)
+                .setPositiveButton(R.string.favorite_list_dialog_positive, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        Dialog f = (Dialog) dialog;
+                        RadioGroup tempRG = (RadioGroup) f.findViewById(R.id.radioGroup);
+                        int selected = tempRG.getCheckedRadioButtonId();
+                        RadioButton tempRB = (RadioButton) tempRG.findViewById(selected);
+                        int index = tempRG.indexOfChild(tempRB);
+                        LatLng favLL = new LatLng(Double.valueOf(stringList[(index * 4) + 2]), Double.valueOf(stringList[(index * 4) + 3]));
+                        clickedMarker = new MarkerOptions().position(favLL);
+                        selectedRange = Double.valueOf(stringList[(which * 4) + 1]);
+                        map.clear();
+                        map.addMarker(clickedMarker);
+                        drawCircle(clickedMarker, selectedRange);
+                        dsb.setProgress((int) selectedRange);
+                        tb.setChecked(true);
+                        stopLocationService();
+                        startLocationService();
+                    }
+                })
+                .setNegativeButton(R.string.favorite_list_dialog_negative, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+
+        // here is list
+        final RadioGroup rg  = (RadioGroup) ad.findViewById(R.id.radioGroup);
+        final TextView status = (TextView) ad.findViewById(R.id.favStatus);
+        final Button clearButton = (Button) ad.findViewById(R.id.clear);
+        clearButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                clearFavorites();
+                ad.dismiss();
+            }
+        });
+
+        if (stringList.length <= 2) {
+            status.setText(getResources().getText(R.string.no_favorite_status));
+        } else {
+            clearButton.setVisibility(View.VISIBLE);
+        }
+
+        for (int i = 0; i < stringList.length - 1; i += 4) {
+            final RadioButton rb = new RadioButton(this); // dynamically creating RadioButton and adding to RadioGroup.
+            rb.setText(stringList[i]);
+            rb.setId(i);
+            rb.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    removeFavorite(rb.getText().toString());
+                    showSnackbar(11, 0);
+                    ad.dismiss();
+                    return false;
+                }
+            });
+            rb.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selected[0] = rb.getId();
+                }
+            });
+            if (i == 0) {
+                rb.setChecked(true);
+            }
+            rg.addView(rb);
+        }
+
     }
 
+    private void removeFavorite(String s) {
+        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+        String tempString = settings.getString("favorites", null);
+        String[] tempStringArray = tempString.split(";");
+        int index = 0;
+        String newString = "";
+        for (String ss : tempStringArray) {
+            Log.d("ss", ss);
+            if (s.equals(ss)) {
+                index = 4;
+            }
+            if (index <= 0) {
+                newString += ss + ";";
+            }
+            index--;
+        }
+        settings.edit().putString("favorites", newString).commit();
+    }
+
+    private void clearFavorites() {
+        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+        settings.edit().putString("favorites", "").commit();
+    }
+
+    private void showAddFavoriteDialog() {
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.add_favorite_dialog_title)
+                .setView(R.layout.add_favorite_layout)
+                .setPositiveButton(R.string.add_favorite_dialog_positive, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        Dialog f = (Dialog) dialog;
+                        //This is the input I can't get text from
+                        EditText inputTemp = (EditText) f.findViewById(R.id.editText);
+
+                        if (inputTemp.getText().toString().length() > 0) {
+                            //Spara och stäng
+                            addFavorite(inputTemp.getText().toString());
+                        } else {
+                            showSnackbar(8, 0);
+                            //Shake the input feild
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.add_favorite_dialog_negative, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+    }
+
+
+    private void addFavorite(String s) {
+        // Restore preferences
+        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+        String temp = settings.getString("favorites", null);
+        if (temp != null) {
+            if (temp.split(";").length <= 16) { //4 x 4 information in sharedpref, then adds the 5th (which is max)0123 4567 891011 12131415
+                if (!temp.contains(s)) {
+                    temp += (s + ";" + String.valueOf(selectedRange) + ";" + String.valueOf(clickedMarker.getPosition().latitude) + ";" + String.valueOf(clickedMarker.getPosition().longitude) + ";");
+                    showSnackbar(4, 0);
+                } else {
+                    temp += "";
+                    showSnackbar(7, 0);
+                    showAddFavoriteDialog();
+                }
+            } else {
+                temp += "";
+                showSnackbar(6, 0);
+            }
+        } else {
+            temp = (s + ";" + String.valueOf(selectedRange) + ";" + String.valueOf(clickedMarker.getPosition().latitude) + ";" + String.valueOf(clickedMarker.getPosition().longitude) + ";");
+            showSnackbar(4, 0);
+        }
+        settings.edit().putString("favorites", temp).commit();
+    }
     //End of onCreate
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.guide:
+                Intent howtoIntent = new Intent(this, GuideActivity.class);
+                startActivity(howtoIntent);
+                return true;
+            case R.id.about:
+                Intent aboutIntent = new Intent(this, AboutActivty.class);
+                startActivity(aboutIntent);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
 
     //Finished methods
     @Override
@@ -163,10 +368,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             @Override
             public void onMapClick(LatLng latLng) {
-                if(!alarmActive) {
+                if (!alarmActive) {
                     MarkerOptions markerOptions = new MarkerOptions();
                     markerOptions.position(latLng);
-                    markerOptions.title(latLng.latitude + " : " + latLng.longitude);
+                    markerOptions.draggable(true);
+                    markerOptions.title(getResources().getText(R.string.map_your_destination).toString());
                     map.clear();
                     map.animateCamera(CameraUpdateFactory.newLatLng(latLng));
                     clickedMarker = markerOptions;
@@ -179,88 +385,132 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //Code to check if the user have given permission to use location services
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             new AlertDialog.Builder(this)
-                .setTitle("Permission required")
-                .setMessage("This application needs to access your location in order to work. Please give this application permission to use location in your phones settings. REMEMBER to restart the app after you have given it permission to use the phones location.")
-                .setPositiveButton("Open settings", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        Intent i = new Intent();
-                        i.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        i.setData(Uri.parse("package:" + getPackageName()));
-                        startActivity(i);
-                    }
-                })
-                .setNegativeButton("Close", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                })
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .show();
+                    .setTitle(R.string.location_permission_dialog_title)
+                    .setMessage(R.string.location_permission_dialog_message)
+                    .setPositiveButton(R.string.location_persmission_dialog_positive, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            Intent i = new Intent();
+                            i.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            i.setData(Uri.parse("package:" + getPackageName()));
+                            startActivity(i);
+                        }
+                    })
+                    .setNegativeButton(R.string.location_permission_dialog_negative, new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    })
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .show();
             return;
         }
         map.setMyLocationEnabled(true);
+        checkIfAlarmActive();
+    }
+
+    private void checkIfAlarmActive() {
+        SharedPreferences settings = getSharedPreferences("ACTIVEALARM", 0);
+        String temp = settings.getString("activealarm", null);
+
+        if (temp != null) {
+            selectedRange = Double.parseDouble(temp.split(";")[0]);
+            dsb.setProgress((int) selectedRange);
+
+            LatLng ll = new LatLng(Double.parseDouble(temp.split(";")[1]), Double.parseDouble(temp.split(";")[2]));
+            MarkerOptions tempMarker = new MarkerOptions();
+            tempMarker.position(ll);
+            clickedMarker = tempMarker;
+            map.addMarker(clickedMarker);
+            drawCircle(clickedMarker, selectedRange);
+
+            tb.setChecked(true);
+
+            toggleNotification(true);
+        }
     }
 
     private void toggleNotification(boolean show) {
-        if(show){
-            Intent notificationIntent = new Intent(this, MainActivity.class);
-            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-            Bundle bundle = new Bundle();
-            bundle.putString("buzz", "buzz");
-            notificationIntent.putExtras(bundle);
-
-            PendingIntent contentIntent = PendingIntent.getActivity(this,
-                    1, notificationIntent,
-                    PendingIntent.FLAG_CANCEL_CURRENT);
-
+        if (show) {
             Notification.Builder builder = new Notification.Builder(this);
 
-            builder.setContentIntent(contentIntent)
-                    .setSmallIcon(R.drawable.ic_stat_name)
+            builder.setSmallIcon(R.drawable.ic_stat_name)
                     .setWhen(System.currentTimeMillis())
                     .setAutoCancel(true)
-                    .setContentTitle("Alarm is on");
-            //.setContentText("Click to turn off alarm");
+                    .setContentTitle(getResources().getText(R.string.notification_title));
             Notification n = builder.build();
             n.flags |= Notification.FLAG_NO_CLEAR;
-
             nm.notify(1, n);
-        }else{
+        } else {
             nm.cancel(1);
         }
     }
 
-    public void showSnackbar(int id, double range){
+    public void showSnackbar(int id, double range) {
         final View snackbarLayout = findViewById(R.id.cLayout);
         switch (id) {
             case 1:
-                Snackbar.make(snackbarLayout, "Maximum range set to " + range + " meters", Snackbar.LENGTH_SHORT)
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_1).toString() + range + " meter", Snackbar.LENGTH_SHORT)
                         .show();
                 break;
             case 2:
-                Snackbar.make(snackbarLayout, "Can't be lower then " + range + " meters", Snackbar.LENGTH_SHORT)
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_2).toString() + range + " meter", Snackbar.LENGTH_SHORT)
                         .show();
                 break;
             case 3:
-                Snackbar.make(snackbarLayout, "Please choose a place for your alarm", Snackbar.LENGTH_SHORT)
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_3).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 4:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_4).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 5:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_5).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 6:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_6).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 7:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_7).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 8:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_8).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 9:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_9).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 10:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_10).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 11:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_11).toString(), Snackbar.LENGTH_SHORT)
                         .show();
                 break;
         }
     }
 
     private void drawCircle(MarkerOptions clickedMarker, double selectedRange) {
-        if(circle != null){
+        if (circle != null) {
             circle.remove();
         }
         circle = map.addCircle(new CircleOptions()
-            .center(new LatLng(clickedMarker.getPosition().latitude, clickedMarker.getPosition().longitude))
-            .radius(selectedRange)
-            .strokeColor(Color.argb(100,0,0,0))
-            .fillColor(Color.argb(100, 100, 150, 200)));
+                .center(new LatLng(clickedMarker.getPosition().latitude, clickedMarker.getPosition().longitude))
+                .radius(selectedRange)
+                .strokeColor(Color.argb(100, 0, 0, 0))
+                .fillColor(Color.argb(100, 100, 150, 200)));
     }
 
     public void startLocationService() {
+        SharedPreferences settings = getSharedPreferences("ACTIVEALARM", 0);
+        settings.edit().putString("activealarm", selectedRange + ";" + clickedMarker.getPosition().latitude + ";" + clickedMarker.getPosition().longitude).commit();
+
+        showSnackbar(9, 0);
         toggleNotification(true);
         alarmActive = true;
         startService(new Intent(getBaseContext(), LocationCheckerService.class));
@@ -268,6 +518,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // Method to stop the service
     public void stopLocationService() {
+        SharedPreferences settings = getSharedPreferences("ACTIVEALARM", 0);
+        settings.edit().putString("activealarm", null).commit();
+
+        showSnackbar(10, 0);
         alarmActive = false;
         clickedMarker = null;
         map.clear();
@@ -281,11 +535,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         stopLocationService();
     }
 
-    public static double getSelectedRange(){
+    public static double getSelectedRange() {
         return selectedRange;
     }
 
-    public static MarkerOptions getClickedMarker(){
+    public static MarkerOptions getClickedMarker() {
         return clickedMarker;
     }
 }

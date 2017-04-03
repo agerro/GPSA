@@ -28,6 +28,16 @@
 
     </android.support.design.widget.CoordinatorLayout>
 
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:srcCompat="@android:drawable/star_big_on"
+        android:id="@+id/star"
+        android:layout_above="@+id/bar"
+        android:layout_margin="5dp"
+        android:layout_alignParentLeft="false"
+        android:layout_alignParentRight="true" />
+
     <View
         android:layout_width="fill_parent"
         android:background="@drawable/shadow_above"
@@ -43,6 +53,14 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true">
 
+        <TextView
+            android:text="@string/slider_Desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/textView7"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="5dp" />
+
         <org.adw.library.widgets.discreteseekbar.DiscreteSeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,7 +70,8 @@
             app:dsb_progressColor="@color/colorAccent"
             app:dsb_indicatorColor="@color/colorAccent"
             app:dsb_trackColor="@color/colorPrimary"
-            app:dsb_trackHeight="1dp" />
+            app:dsb_trackHeight="1dp"
+            app:dsb_indicatorElevation="0dp"/>
 
 
     <LinearLayout
@@ -63,7 +82,7 @@
         <LinearLayout
             android:id="@+id/l1"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="50dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -76,13 +95,13 @@
         <LinearLayout
             android:id="@+id/l2"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="50dp"
             android:layout_weight="1"
             android:orientation="vertical">
             <ToggleButton
                 android:text="@string/togglebutton"
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
+                android:layout_height="match_parent"
                 android:id="@+id/toggleButton2"
                 android:textOff="@string/alarm_off"
                 android:textOn="@string/alarm_on" />
@@ -97,7 +116,7 @@
             <Button
                 android:text="@string/increase"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:id="@+id/increase" />
         </LinearLayout>
     </LinearLayout>

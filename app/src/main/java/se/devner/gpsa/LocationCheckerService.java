@@ -56,8 +56,6 @@ public class LocationCheckerService extends Service {
                 public void onLocationUpdated(Location location) {
                     GPSActivated = true;
                     currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
-                    Log.d("current: ", String.valueOf(currentLocation.latitude) + ", " + String.valueOf(currentLocation.longitude));
-                    Log.d("clicked: ", String.valueOf(clickedMarker.getPosition().latitude) + ", " + String.valueOf(clickedMarker.getPosition().longitude));
                 }
             });
 
@@ -112,7 +110,7 @@ public class LocationCheckerService extends Service {
     private void activateAlarm() {
         alarming = true;
         Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.SECOND, 2);
+        cal.add(Calendar.SECOND, 1);
         Intent intent = new Intent(this, AlarmReceiverActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 12345, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         AlarmManager am = (AlarmManager)getSystemService(Activity.ALARM_SERVICE);
