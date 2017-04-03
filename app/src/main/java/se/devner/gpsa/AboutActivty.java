@@ -19,6 +19,7 @@ import com.google.android.gms.ads.AdView;
  */
 public class AboutActivty extends AppCompatActivity {
 
+//init
     private AdView mAdView;
     TextView versionCode;
 
