@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="snackbar_id_11">Favorit borttagen</string>
+    <string name="no_favorite_status">Inga favoriter</string>
+    <string name="fav_clear_button">Ta bort alla favoriter</string>
+</resources>
