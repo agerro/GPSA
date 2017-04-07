@@ -2,7 +2,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/fav1">
+    android:id="@+id/fav1"
+    android:layout_marginLeft="10dp">
 
     <RadioGroup
         android:layout_width="match_parent"
@@ -16,13 +17,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/favStatus"
-        android:layout_marginLeft="15dp" />
+        android:layout_marginLeft="10dp" />
+
+    <Button
+        android:text="@string/fav_remove_favorite"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/remove"
+        android:visibility="invisible" />
 
     <Button
         android:text="@string/fav_clear_button"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/clear"
-        android:visibility="invisible"
-        android:layout_marginLeft="10dp" />
+        android:visibility="invisible" />
+
 </LinearLayout>

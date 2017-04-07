@@ -55,7 +55,9 @@ public class LocationCheckerService extends Service {
                 @Override
                 public void onLocationUpdated(Location location) {
                     GPSActivated = true;
-                    currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                    if(location != null) {
+                        currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                    }
                 }
             });
 

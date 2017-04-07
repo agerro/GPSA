@@ -38,6 +38,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
@@ -65,7 +66,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         //DEBUG METHODS
-        clearFavorites();
+        //SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+        //settings.edit().putString("favorites", "").commit();
 
         //Init variables
         clickedMarker = null;
@@ -76,6 +78,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         GPSActivated = false;
         alarm = false;
 
+        /*
         //Init Starbutton
         star = (ImageView) findViewById(R.id.star);
         star.setOnClickListener(new View.OnClickListener() {
@@ -88,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
-
+*/
         //Init slider
         dsb = (DiscreteSeekBar) findViewById(R.id.dsb);
         dsb.setOnProgressChangeListener(new DiscreteSeekBar.OnProgressChangeListener() {
@@ -180,7 +183,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void showFavoriteList() {
         SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
         String temp = settings.getString("favorites", null);
-        final String[] stringList = temp.split(";");
+        final String[] stringList;
+        if(temp != null) {
+            stringList = temp.split(";");
+        }else{
+            stringList = new String[]{"empty"};
+        }
         final int[] selected = {0};
         // custom dialog
         final AlertDialog ad = new AlertDialog.Builder(this)
@@ -188,21 +196,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .setView(R.layout.select_favorite_layout)
                 .setPositiveButton(R.string.favorite_list_dialog_positive, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        Dialog f = (Dialog) dialog;
-                        RadioGroup tempRG = (RadioGroup) f.findViewById(R.id.radioGroup);
-                        int selected = tempRG.getCheckedRadioButtonId();
-                        RadioButton tempRB = (RadioButton) tempRG.findViewById(selected);
-                        int index = tempRG.indexOfChild(tempRB);
-                        LatLng favLL = new LatLng(Double.valueOf(stringList[(index * 4) + 2]), Double.valueOf(stringList[(index * 4) + 3]));
-                        clickedMarker = new MarkerOptions().position(favLL);
-                        selectedRange = Double.valueOf(stringList[(which * 4) + 1]);
-                        map.clear();
-                        map.addMarker(clickedMarker);
-                        drawCircle(clickedMarker, selectedRange);
-                        dsb.setProgress((int) selectedRange);
-                        tb.setChecked(true);
-                        stopLocationService();
-                        startLocationService();
+                        if(stringList.length >= 2) {
+                            stopLocationService();
+
+                            Dialog f = (Dialog) dialog;
+                            RadioGroup tempRG = (RadioGroup) f.findViewById(R.id.radioGroup);
+                            int selectedId = tempRG.getCheckedRadioButtonId();
+                            RadioButton tempRB = (RadioButton) tempRG.findViewById(selectedId);
+                            int index = tempRG.indexOfChild(tempRB);
+                            LatLng favLL = new LatLng(Double.valueOf(stringList[(index * 4) + 2]), Double.valueOf(stringList[(index * 4) + 3]));
+                            clickedMarker = new MarkerOptions().position(favLL);
+                            selectedRange = Double.valueOf(stringList[(index * 4) + 1]);
+                            map.clear();
+                            map.addMarker(clickedMarker);
+                            drawCircle(clickedMarker, selectedRange);
+                            dsb.setProgress((int) selectedRange);
+                            tb.setChecked(true);
+
+                            startLocationService();
+                        }else{
+                            showSnackbar(12, 0);
+                        }
                     }
                 })
                 .setNegativeButton(R.string.favorite_list_dialog_negative, new DialogInterface.OnClickListener() {
@@ -224,25 +238,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+        final Button removeButton = (Button) ad.findViewById(R.id.remove);
+        removeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                RadioGroup tempRG = (RadioGroup) ad.findViewById(R.id.radioGroup);
+                int selectedId = tempRG.getCheckedRadioButtonId();
+                RadioButton tempRB = (RadioButton) tempRG.findViewById(selectedId);
+                removeFavorite(tempRB.getText().toString());
+                ad.dismiss();
+            }
+        });
         if (stringList.length <= 2) {
             status.setText(getResources().getText(R.string.no_favorite_status));
         } else {
             clearButton.setVisibility(View.VISIBLE);
+            removeButton.setVisibility(View.VISIBLE);
         }
 
         for (int i = 0; i < stringList.length - 1; i += 4) {
             final RadioButton rb = new RadioButton(this); // dynamically creating RadioButton and adding to RadioGroup.
             rb.setText(stringList[i]);
             rb.setId(i);
-            rb.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View v) {
-                    removeFavorite(rb.getText().toString());
-                    showSnackbar(11, 0);
-                    ad.dismiss();
-                    return false;
-                }
-            });
             rb.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -251,34 +268,63 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
             if (i == 0) {
                 rb.setChecked(true);
+                selected[0] = rb.getId();
             }
             rg.addView(rb);
         }
-
     }
 
-    private void removeFavorite(String s) {
-        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
-        String tempString = settings.getString("favorites", null);
-        String[] tempStringArray = tempString.split(";");
-        int index = 0;
-        String newString = "";
-        for (String ss : tempStringArray) {
-            Log.d("ss", ss);
-            if (s.equals(ss)) {
-                index = 4;
-            }
-            if (index <= 0) {
-                newString += ss + ";";
-            }
-            index--;
-        }
-        settings.edit().putString("favorites", newString).commit();
+    private void removeFavorite(final String s) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.remove_favorite_dialog_title)
+                .setMessage(s.toString())
+                .setPositiveButton(R.string.remove_favorite_dialog_positive, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+                        String tempString = settings.getString("favorites", null);
+                        String[] tempStringArray = tempString.split(";");
+                        int index = 0;
+                        String newString = "";
+                        for (String ss : tempStringArray) {
+                            Log.d("ss", ss);
+                            if (s.equals(ss)) {
+                                index = 4;
+                            }
+                            if (index <= 0) {
+                                newString += ss + ";";
+                            }
+                            index--;
+                        }
+                        settings.edit().putString("favorites", newString).commit();
+                        showSnackbar(11, 0);
+
+                    }
+                })
+                .setNegativeButton(R.string.remove_favorite_dialog_negative, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
     }
 
     private void clearFavorites() {
-        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
-        settings.edit().putString("favorites", "").commit();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.remove_favorites_dialog_title)
+                .setPositiveButton(R.string.remove_favorite_dialog_positive, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferences settings = getSharedPreferences("FAVORITES", 0);
+                        settings.edit().putString("favorites", "").commit();
+                        stopLocationService();
+                        showSnackbar(13, 0);
+                    }
+                })
+                .setNegativeButton(R.string.remove_favorite_dialog_negative, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
     }
 
     private void showAddFavoriteDialog() {
@@ -322,7 +368,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 } else {
                     temp += "";
                     showSnackbar(7, 0);
-                    showAddFavoriteDialog();
+                    //showAddFavoriteDialog();
                 }
             } else {
                 temp += "";
@@ -406,6 +452,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         map.setMyLocationEnabled(true);
         checkIfAlarmActive();
+
+        map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                showAddFavoriteDialog();
+            }
+        });
     }
 
     private void checkIfAlarmActive() {
@@ -490,6 +543,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 break;
             case 11:
                 Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_11).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 12:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_12).toString(), Snackbar.LENGTH_SHORT)
+                        .show();
+                break;
+            case 13:
+                Snackbar.make(snackbarLayout, getResources().getText(R.string.snackbar_id_13).toString(), Snackbar.LENGTH_SHORT)
                         .show();
                 break;
         }
