@@ -12,12 +12,12 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -31,6 +31,8 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -40,7 +42,6 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-
 import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -57,8 +58,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     DiscreteSeekBar dsb;
     ToggleButton tb;
     Circle circle;
-    ImageView star;
     NotificationManager nm;
+    SearchView searchBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +98,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         dsb.setOnProgressChangeListener(new DiscreteSeekBar.OnProgressChangeListener() {
             @Override
             public void onProgressChanged(DiscreteSeekBar seekBar, int value, boolean fromUser) {
-                selectedRange = (double) value;
+                if(!alarmActive){
+                    selectedRange = (double) value;
+                }
             }
 
             @Override
@@ -142,6 +145,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+        searchBar = (SearchView) findViewById(R.id.search);
+        searchBar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    Intent intent =
+                            new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
+                                    .setFilter(typeFilter)
+                                    .build(this);
+                    startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
+                } catch (GooglePlayServicesRepairableException e) {
+                    // TODO: Handle the error.
+                } catch (GooglePlayServicesNotAvailableException e) {
+                    // TODO: Handle the error.
+                }
+            }
+        });
+
         //Init logo instead off text in toolbar
         getSupportActionBar().setDisplayShowHomeEnabled(true);
         getSupportActionBar().setIcon(R.drawable.logobar);
@@ -162,11 +183,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (tb.isChecked()) {
                     if (clickedMarker != null) {
                         startLocationService();
+                        dsb.setEnabled(false);
                     } else {
                         tb.setChecked(false);
                         showSnackbar(3, 0);
                     }
                 } else {
+                    dsb.setEnabled(true);
                     stopLocationService();
                 }
             }
@@ -191,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         final int[] selected = {0};
         // custom dialog
-        final AlertDialog ad = new AlertDialog.Builder(this)
+        final AlertDialog favoritesDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.favorite_list_dialog_title)
                 .setView(R.layout.select_favorite_layout)
                 .setPositiveButton(R.string.favorite_list_dialog_positive, new DialogInterface.OnClickListener() {
@@ -227,26 +250,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .show();
 
         // here is list
-        final RadioGroup rg  = (RadioGroup) ad.findViewById(R.id.radioGroup);
-        final TextView status = (TextView) ad.findViewById(R.id.favStatus);
-        final Button clearButton = (Button) ad.findViewById(R.id.clear);
+        final RadioGroup rg  = (RadioGroup) favoritesDialog.findViewById(R.id.radioGroup);
+        final TextView status = (TextView) favoritesDialog.findViewById(R.id.favStatus);
+        final Button clearButton = (Button) favoritesDialog.findViewById(R.id.clear);
         clearButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 clearFavorites();
-                ad.dismiss();
+                favoritesDialog.dismiss();
             }
         });
 
-        final Button removeButton = (Button) ad.findViewById(R.id.remove);
+        final Button removeButton = (Button) favoritesDialog.findViewById(R.id.remove);
         removeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                RadioGroup tempRG = (RadioGroup) ad.findViewById(R.id.radioGroup);
+                RadioGroup tempRG = (RadioGroup) favoritesDialog.findViewById(R.id.radioGroup);
                 int selectedId = tempRG.getCheckedRadioButtonId();
                 RadioButton tempRB = (RadioButton) tempRG.findViewById(selectedId);
                 removeFavorite(tempRB.getText().toString());
-                ad.dismiss();
+                favoritesDialog.dismiss();
             }
         });
         if (stringList.length <= 2) {
