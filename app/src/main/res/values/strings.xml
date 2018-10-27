@@ -7,8 +7,6 @@
     <string name="togglebutton">ToggleButton</string>
     <string name="stop_alarm">Stop alarm</string>
     <string name="alarmText">You have arrived at your location!</string>
-    <string name="banner_ad_unit_id">ca-app-pub-2493554175078356/1112151026</string>
-    <string name="mapApiKey">AIzaSyB83nFQGVLDf0SyNyo8A3KwGu9zRG_5RiY</string>
     <string name="back">Go back</string>
     <string name="favorite_list_dialog_title">Select favorite location</string>
     <string name="favorite_list_dialog_positive">Choose</string>
@@ -16,7 +14,7 @@
     <string name="add_favorite_dialog_title">Add favorite location</string>
     <string name="add_favorite_dialog_positive">Save</string>
     <string name="add_favorite_dialog_negative">Cancel</string>
-    <string name="map_your_destination">Your destination</string>
+    <string name="map_your_destination">Mark as favorite</string>
     <string name="location_permission_dialog_title">Permission required</string>
     <string name="location_permission_dialog_message">This application needs to access your location in order to work. Give this application permission to use location in your phones settings. REMEMBER to restart the app after you have given it permission to use the phones location.</string>
     <string name="location_persmission_dialog_positive">Open settings</string>
@@ -41,8 +39,15 @@
     <string name="guide_step_4">4. You can use your phone for other stuff when the alarm is active. Killing the application will also kill and remove the alarm.</string>
     <string name="guide_note">NOTE: The alarm is only active for at max 24 hours, then it kills itself!</string>
     <string name="slider_Desc">Distance from destination</string>
-    <string name="guide_favorites">FAVORITES: When you have a destination and a distance selected, you can star a location by clicking the star. By then long pressing the turn on button, you can select one of your starred alarms and start it quickly by pressing it in the list!</string>
+    <string name="guide_favorites">FAVORITES: When you have a destination and a distance selected, you can add a location to your favorites by clicking on the marker. By then long pressing the on button, you can select one of your favorite location and start it quickly by selecting it in the list!</string>
     <string name="snackbar_id_11">Favorite removed</string>
     <string name="fav_clear_button">Erase all favorites</string>
     <string name="no_favorite_status">No favorites</string>
+    <string name="fav_remove_favorite" >Remove</string>
+    <string name="remove_favorite_dialog_negative">No</string>
+    <string name="remove_favorite_dialog_title">Remove favorite?</string>
+    <string name="remove_favorite_dialog_positive">Yes</string>
+    <string name="remove_favorites_dialog_title">Remove all favorites?</string>
+    <string name="snackbar_id_12">No existing favorites</string>
+    <string name="snackbar_id_13">All favorites removed</string>
 </resources>

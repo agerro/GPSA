@@ -39,6 +39,7 @@ public class AlarmReceiverActivity extends Activity {
         stopAlarm.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View arg0, MotionEvent arg1) {
                 mMediaPlayer.stop();
+                //mMediaPlayer.release();
                 //Restarts the application
                 Intent i = getBaseContext().getPackageManager()
                         .getLaunchIntentForPackage( getBaseContext().getPackageName() );
