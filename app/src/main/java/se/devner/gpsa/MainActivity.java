@@ -17,7 +17,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -28,11 +27,18 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.places.AutocompleteFilter;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlaceAutocomplete;
+import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
+import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -44,8 +50,11 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
 
+import static android.R.attr.data;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     GoogleMap map;
     static MarkerOptions clickedMarker;
     boolean alarmActive;
@@ -59,7 +68,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     ToggleButton tb;
     Circle circle;
     NotificationManager nm;
-    SearchView searchBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,21 +87,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         GPSActivated = false;
         alarm = false;
 
-        /*
-        //Init Starbutton
-        star = (ImageView) findViewById(R.id.star);
-        star.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (clickedMarker == null) {
-                    showSnackbar(5, 0);
-                } else {
-                    showAddFavoriteDialog();
-                }
-            }
-        });
-*/
-        //Init slider
         dsb = (DiscreteSeekBar) findViewById(R.id.dsb);
         dsb.setOnProgressChangeListener(new DiscreteSeekBar.OnProgressChangeListener() {
             @Override
@@ -142,24 +135,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 maxRange += 1000;
                 showSnackbar(1, maxRange);
                 dsb.setMax((int) maxRange);
-            }
-        });
-
-        searchBar = (SearchView) findViewById(R.id.search);
-        searchBar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    Intent intent =
-                            new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
-                                    .setFilter(typeFilter)
-                                    .build(this);
-                    startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
-                } catch (GooglePlayServicesRepairableException e) {
-                    // TODO: Handle the error.
-                } catch (GooglePlayServicesNotAvailableException e) {
-                    // TODO: Handle the error.
-                }
             }
         });
 
@@ -609,6 +584,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         alarmActive = false;
         clickedMarker = null;
         map.clear();
+        dsb.setProgress(0);
         toggleNotification(false);
         stopService(new Intent(getBaseContext(), LocationCheckerService.class));
     }

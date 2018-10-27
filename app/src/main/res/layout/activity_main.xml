@@ -12,7 +12,6 @@
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/search"
         class="com.google.android.gms.maps.SupportMapFragment"
         android:layout_gravity="top"
         android:layout_alignParentStart="false"
@@ -31,17 +30,9 @@
     <View
         android:layout_width="fill_parent"
         android:background="@drawable/shadow_above"
-        android:layout_height="5dp"
+        android:layout_height="8dp"
         android:clickable="true"
-        android:layout_above="@+id/search" />
-
-    <SearchView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/background_light"
-        android:gravity="bottom"
-        android:layout_above="@+id/bar"
-        android:id="@+id/search" />
+        android:layout_above="@+id/bar" />
 
     <LinearLayout
         android:layout_width="match_parent"

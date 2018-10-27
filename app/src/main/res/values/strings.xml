@@ -7,8 +7,6 @@
     <string name="togglebutton">ToggleButton</string>
     <string name="stop_alarm">Stop alarm</string>
     <string name="alarmText">You have arrived at your location!</string>
-    <string name="banner_ad_unit_id">ca-app-pub-2493554175078356/1112151026</string>
-    <string name="mapApiKey">AIzaSyB83nFQGVLDf0SyNyo8A3KwGu9zRG_5RiY</string>
     <string name="back">Go back</string>
     <string name="favorite_list_dialog_title">Select favorite location</string>
     <string name="favorite_list_dialog_positive">Choose</string>

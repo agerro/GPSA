@@ -18,11 +18,6 @@ import io.nlopez.smartlocation.OnLocationUpdatedListener;
 import io.nlopez.smartlocation.SmartLocation;
 import io.nlopez.smartlocation.location.config.LocationParams;
 
-
-/**
- * Created by TutorialsPoint7 on 8/23/2016.
- */
-
 public class LocationCheckerService extends Service {
 
     boolean GPSActivated, alarming;
@@ -105,7 +100,7 @@ public class LocationCheckerService extends Service {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         double distance = earthRadius * c;
         int meterConversion = 1609;
-        Float f = new Float(distance * meterConversion).floatValue();
+        Float f = Float.valueOf((float) (distance * meterConversion));
         return f;
     }
 
